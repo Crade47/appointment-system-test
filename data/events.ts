@@ -12,7 +12,7 @@ export const getDate = (offset = 0) =>
     new Date().setDate(today.getDate() + offset),
   )
 
-export const busyData = [
+export const busyData = [ 
   {
     '2023-06-30': [
       { start: 0, end: 9 },
@@ -125,6 +125,14 @@ export const timelineEvents: TimelineEventProps[] = [
   },
 ]
 
+export const patientNotes = {
+  "2023-07-02 13:30:00":{
+    "Mia Garcia": "<div><b>Hello</b></div><div>How are you doing</div><div>This section contains details about the session </div>;"
+  }
+} 
+
+
+
 export const marked = {
   [`${getDate(-2)}`]: { marked: true },
   [`${getDate(-1)}`]: { marked: true },
@@ -135,6 +143,27 @@ export const marked = {
 
 export const checkAvailability = (dateString: string): BusyDataType => {
   const busySlots = busyData.find((busy) => busy.hasOwnProperty(dateString))
-
   return busySlots === undefined ? DEFAULT_BUSY : busySlots[dateString]
+}
+
+export const updateBusyData = (data, dateString: string) =>{
+  // Check if the array is empty
+  if (data.length === 0) {
+    data.push({ [dateString]: [] });
+  }
+
+  // Access the first object in the array
+  const busyData = data[0];
+
+  // Check if the specified date already exists as a key
+  if (busyData.hasOwnProperty(dateString)) {
+    // Push the data into the existing array
+    busyData[dateString].push(data);
+  } else {
+    // Create a new key with the specified date and initialize it with an array containing the data
+    busyData[dateString] = [data];
+  }
+
+  console.log(busyData)
+
 }

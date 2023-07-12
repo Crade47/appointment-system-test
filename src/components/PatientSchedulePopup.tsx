@@ -3,9 +3,11 @@ import DateTimePicker from "@react-native-community/datetimepicker";
 import { DateTimePickerEvent } from "@react-native-community/datetimepicker";
 import { useState, useEffect } from "react";
 import { TimelineEventProps } from "react-native-calendars";
-import { Portal } from "react-native-portalize";
+import { Host, Portal } from "react-native-portalize";
 import { TouchableOpacity } from "react-native";
 import moment from "moment";
+import PatientNotesModal from "./PatientNotesModal";
+import FollowUp from "./FollowUp";
 
 type Props = {
   showPatientPortal: boolean;
@@ -20,13 +22,14 @@ const PatentSchedulePopup = ({
   handleClosePatientPortal,
   patientData,
   modifyEventTime,
-  deleteEvent
+  deleteEvent,
 }: Props) => {
   const [changedFromTime, setChangedFromTime] = useState(null);
   const [changedToTime, setChangedToTime] = useState(null);
   const [showFromClock, setShowFromClock] = useState(false);
   const [showToClock, setShowToClock] = useState(false);
-
+  const [showNotesModal, setShowNotesModal] = useState(false);
+  console.log(patientData)
   const handleFromTimeChange = (
     event: DateTimePickerEvent,
     selectedTime: Date
@@ -62,11 +65,11 @@ const PatentSchedulePopup = ({
   };
 
   const handleDeleteButton = () => {
-    deleteEvent(patientData.title, patientData.start, patientData.end)
+    deleteEvent(patientData.title, patientData.start, patientData.end);
     setChangedFromTime(null);
     setChangedToTime(null);
     handleClosePatientPortal();
-  }
+  };
 
   return (
     <>
@@ -74,9 +77,10 @@ const PatentSchedulePopup = ({
         <Portal>
           <View style={styles.modalContainer}>
             <View style={styles.popupContainer}>
-              <Text style={{ fontSize: 20 }}>{patientData.title}</Text>
+              <Text style={{ fontSize: 25, fontWeight:"bold" }}>{patientData.title}</Text>
               <Text style={{ fontSize: 17, paddingTop: 20 }}>From: </Text>
 
+              {/* FromSection */}
               <TouchableOpacity
                 onPress={() => setShowFromClock((prevState) => !prevState)}
               >
@@ -134,24 +138,41 @@ const PatentSchedulePopup = ({
                 </TouchableOpacity>
               )}
 
-              {/* Cancel Button */}
+              <FollowUp/>
+              {/* Notes Button */}
               <TouchableOpacity
-                onPress={handleClosePatientPortal}
+                onPress={() => setShowNotesModal(true)}
                 style={styles.closeButton}
               >
-                <Text style={{ textAlign: "center" }}>Close</Text>
+                <Text style={{ textAlign: "center" }}>Notes</Text>
               </TouchableOpacity>
 
-              {/* Delete Button */}
-              <TouchableOpacity
-                onPress={handleDeleteButton}
-                style={styles.deleteButton}
-              >
-                <Text style={{ textAlign: "center" }}>Delete</Text>
-              </TouchableOpacity>
- 
+                {/*Cancel and Delete button section*/}
+              <View style={{ flexDirection: "row", gap: 40, alignItems:"center", justifyContent:"center" }}>
+                {/* Cancel Button */}
+                <TouchableOpacity
+                  onPress={handleClosePatientPortal}
+                  style={{...styles.closeButton, paddingHorizontal:30}}
+                >
+                  <Text style={{ textAlign: "center" }}>Close</Text>
+                </TouchableOpacity>
+
+                {/* Delete Button */}
+                <TouchableOpacity
+                  onPress={handleDeleteButton}
+                  style={{...styles.deleteButton, paddingHorizontal:30}}
+                >
+                  <Text style={{ textAlign: "center" }}>Delete</Text>
+                </TouchableOpacity>
+              </View>
             </View>
           </View>
+          <PatientNotesModal
+            showNotesModal={showNotesModal}
+            patientData={patientData}
+            setShowNotesModal={setShowNotesModal}
+          />
+          
         </Portal>
       )}
     </>
@@ -169,7 +190,8 @@ const styles = StyleSheet.create({
   },
   popupContainer: {
     backgroundColor: "#fff",
-    padding: 40,
+    padding: 30,
+    paddingHorizontal: 40,
     borderRadius: 8,
     position: "relative",
   },
@@ -202,6 +224,6 @@ const styles = StyleSheet.create({
     borderWidth: 0.5,
     borderRadius: 7,
     padding: 7,
-    backgroundColor: "rgba(255, 105, 97, 0.4)"
+    backgroundColor: "rgba(255, 105, 97, 0.4)",
   },
 });

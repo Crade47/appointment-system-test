@@ -3,7 +3,6 @@ import { FlashList } from "@shopify/flash-list";
 import { useState } from "react";
 import { TouchableOpacity } from "react-native-gesture-handler";
 import { Ionicons } from "@expo/vector-icons";
-import DateTimePicker from "@react-native-community/datetimepicker";
 import { BusyDataType } from "../../data/events";
 import TimeslotCard from "./TimeslotCard";
 import UnavailabilitySetPopup from "./UnavailabilitySetPopup";
@@ -35,15 +34,6 @@ const BusyPick = ({
       <View style={{ flexDirection: "row", alignItems: "flex-end", gap: 10 }}>
         <Text style={{ fontSize: 25 }}>Busy Slots</Text>
 
-        {/* {showClock ? (
-          <DateTimePicker value={new Date()} mode="time" display="spinner" onTouchCancel={() => console.log("cancelled")}  />
-        ) : (
-          <TouchableOpacity
-            onPress={() => setShowClock((prevState) => !prevState)}
-          >
-            <Ionicons name="add-circle" size={24} color="black" />
-          </TouchableOpacity>
-        )} */}
         <TouchableOpacity
           onPress={() => setShowModal((prevState) => !prevState)}
         >

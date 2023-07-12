@@ -1,4 +1,6 @@
 import { StyleSheet, View, Text } from "react-native";
+import moment from "moment"
+import { Ionicons } from "@expo/vector-icons";
 import { Host } from "react-native-portalize";
 import groupBy from "lodash/groupBy";
 import { useState, useEffect } from "react";
@@ -22,6 +24,10 @@ import { TouchableOpacity } from "react-native-gesture-handler";
 import Avatar from "../../components/Avatar";
 import BusyPick from "../../components/BusyPick";
 import PatentSchedulePopup from "../../components/PatientSchedulePopup";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import UnavailabilitySetPopup from "../../components/UnavailabilitySetPopup";
+import { busyAlgorithm } from "../../utils/BusyAlgo";
+import PatientNotesModal from "../../components/PatientNotesModal";
 
 const EVENTS: TimelineEventProps[] = timelineEvents;
 
@@ -36,13 +42,17 @@ const ScheduleScreen = () => {
     end: "",
     title: "",
   });
-  const [showPatientPortal, setShowPatientPortal] = useState<boolean>(false)
+  const [showPatientPortal, setShowPatientPortal] = useState<boolean>(false);
+  const [showUnavailPopup, setShowUnavailPopup] = useState<boolean>(false);
+  const [pickedTime, setPickedTime] = useState<string | null>(null);
 
   const onDateChanged = (date: string) => {
+    // setBusyData([])
     setTodayDate(date);
   };
   useEffect(() => {
     const updateBusyData = () => {
+      
       const data = checkAvailability(todayDate);
       setBusyData(data);
     };
@@ -50,18 +60,42 @@ const ScheduleScreen = () => {
     updateBusyData();
   }, [todayDate]);
 
-  useEffect(() => {
-    const sortBusyData = () => {
-      const sortedData = busyData.sort((a, b) => a.start - b.start);
-      setBusyData(sortedData);
-    };
+  //Getting Data from storage
+  // useEffect(() => {
+  //   const sortBusyData = () => {
+  //     const sortedData = busyData.sort((a, b) => a.start - b.start);
+  //     setBusyData(sortedData);
+  //   };
 
-    sortBusyData();
-  }, [busyData]);
+  //   sortBusyData();
+  // }, [busyData]);
 
-  const onMonthChange = (month: any, updateSource: any) => {
-    console.log("TimelineCalendarScreen onMonthChange: ", month, updateSource);
-  };
+  //Setting Data inside storage
+  // useEffect(() => {
+  //   const storeDataToStorage = async () => {
+  //     try {
+  //       await AsyncStorage.setItem("busyData", JSON.stringify(busyData));
+  //       await AsyncStorage.setItem("marked", JSON.stringify(marked));
+  //       await AsyncStorage.setItem(
+  //         "timelineEvents",
+  //         JSON.stringify(eventsByDate)
+  //       );
+  //     } catch (error) {
+  //       console.log("Error storing data to AsyncStorage:", error);
+  //     }
+  //   };
+
+  //   storeDataToStorage();
+  // }, [busyData, marked, eventsByDate]);
+
+  // useEffect(() => {
+  //   const updateBusyData = () =>{
+  //     setBusyData(checkAvailability(todayDate));
+  //     busyAlgorithm(eventsByDate[todayDate], busyData, todayDate);
+  //   }
+  //   updateBusyData(); 
+  // }, [todayDate, eventsByDate]);
+
 
   const handleDeleteSlot = (start: number, end: number) => {
     const busySlots = checkAvailability(todayDate);
@@ -108,21 +142,23 @@ const ScheduleScreen = () => {
       end: data.end,
       title: data.title,
     }));
-    setShowPatientPortal(true)
+    setShowPatientPortal(true);
   };
 
-  const handleClosePatientPortal = () =>{
+  const handleClosePatientPortal = () => {
     setShowPatientPortal(false);
-  }
+  };
+
+  const handleBackgroundLongPress = (timeString: string) => {
+    setPickedTime(timeString);
+    setShowUnavailPopup(true);
+  };
 
   const timelineProps: Partial<TimelineProps> = {
     format24h: true,
-    // onBackgroundLongPress: createNewEvent,
-    // onBackgroundLongPressOut: approveNewEvent,
+    onBackgroundLongPress: (e) => handleBackgroundLongPress(e),
     onEventPress: (e) => handleEventCardClick(e),
-    // start: 0,
     renderEvent: renderItem,
-    // end: 24,
     unavailableHours: busyData,
     unavailableHoursColor: "rgba(255, 105, 97, 0.4)",
     styles: {
@@ -145,38 +181,50 @@ const ScheduleScreen = () => {
 
   const modifyEventTime = (start: string, end: string) => {
     const updatedEvents = { ...eventsByDate };
-  const selectedDate = CalendarUtils.getCalendarDateString(selectedPatient.start);
+    const selectedDate = CalendarUtils.getCalendarDateString(
+      selectedPatient.start
+    );
 
-  if (updatedEvents[selectedDate]) {
-    updatedEvents[selectedDate] = updatedEvents[selectedDate].map((event) => {
-      if (event.start === selectedPatient.start && event.end === selectedPatient.end) {
-        return {
-          ...event,
-          start,
-          end,
-        };
-      }
-      return event;
-    });
-    console.log(updatedEvents)
-    setEventsByDate(updatedEvents)
-  }
-}
+    if (updatedEvents[selectedDate]) {
+      updatedEvents[selectedDate] = updatedEvents[selectedDate].map((event) => {
+        if (
+          event.start === selectedPatient.start &&
+          event.end === selectedPatient.end
+        ) {
+          return {
+            ...event,
+            start,
+            end,
+          };
+        }
+        return event;
+      });
+      console.log(updatedEvents);
+      setEventsByDate(updatedEvents);
+    }
+  };
 
-const deleteEvent = (title: string, start: string, end: string) => {
-  const updatedEvents = { ...eventsByDate };
-  const selectedDate = CalendarUtils.getCalendarDateString(start);
+  const deleteEvent = (title: string, start: string, end: string) => {
+    const updatedEvents = { ...eventsByDate };
+    const selectedDate = CalendarUtils.getCalendarDateString(start);
 
-  if (updatedEvents[selectedDate]) {
-    updatedEvents[selectedDate] = updatedEvents[selectedDate].filter((event) => {
-      return !(event.title === title && event.start === start && event.end === end);
-    });
+    if (updatedEvents[selectedDate]) {
+      updatedEvents[selectedDate] = updatedEvents[selectedDate].filter(
+        (event) => {
+          return !(
+            event.title === title &&
+            event.start === start &&
+            event.end === end
+          );
+        }
+      );
 
-    setEventsByDate(updatedEvents);
-  }
-};
+      setEventsByDate(updatedEvents);
+    }
+  };
 
   return (
+    <>
     <Host>
       <View style={{ flex: 1 }}>
         <BusyPick
@@ -187,7 +235,6 @@ const deleteEvent = (title: string, start: string, end: string) => {
         <CalendarProvider
           date={todayDate}
           onDateChanged={onDateChanged}
-          onMonthChange={onMonthChange}
           showTodayButton
           disabledOpacity={0.6}
         >
@@ -207,8 +254,26 @@ const deleteEvent = (title: string, start: string, end: string) => {
           />
         </CalendarProvider>
       </View>
-      <PatentSchedulePopup deleteEvent={deleteEvent} modifyEventTime={modifyEventTime} handleClosePatientPortal={handleClosePatientPortal} patientData={selectedPatient} showPatientPortal={showPatientPortal} />
+      <PatentSchedulePopup
+        deleteEvent={deleteEvent}
+        modifyEventTime={modifyEventTime}
+        handleClosePatientPortal={handleClosePatientPortal}
+        patientData={selectedPatient}
+        showPatientPortal={showPatientPortal}
+      />
+      <UnavailabilitySetPopup
+        showModal={showUnavailPopup}
+        handleCloseModal={() => {
+          setPickedTime(null);
+          setShowUnavailPopup(false);
+        }}
+        addBusySlot={addBusySlot}
+        pickedTime={pickedTime}
+      />
+
     </Host>
+
+</>
   );
 };
 

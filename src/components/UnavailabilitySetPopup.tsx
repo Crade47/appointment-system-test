@@ -1,6 +1,7 @@
 import { Platform, StyleSheet, Text, View } from "react-native";
+import { DateTimePickerEvent } from "@react-native-community/datetimepicker";
 import DateTimePicker from "@react-native-community/datetimepicker";
-import React, { useState } from "react";
+import { useState, useEffect } from "react";
 import { Portal } from "react-native-portalize";
 import { TouchableOpacity } from "react-native-gesture-handler";
 import moment from "moment";
@@ -9,39 +10,70 @@ type Props = {
   showModal: boolean;
   handleCloseModal: () => void;
   addBusySlot: (start: number, end: number) => void;
+  pickedTime?: string | null;
 };
 
-const UnavailabilitySetPopup = ({ showModal, handleCloseModal, addBusySlot }: Props) => {
+const UnavailabilitySetPopup = ({
+  showModal,
+  pickedTime,
+  handleCloseModal,
+  addBusySlot,
+}: Props) => {
   const [fromTime, setFromTime] = useState(null);
   const [toTime, setToTime] = useState(null);
-  const [showDateTimePicker, setShowDateTimePicker] = useState(false);
-  const [selectedTime, setSelectedTime] = useState(null);
+  const [showFromClock, setShowFromClock] = useState(false);
+  const [showToClock, setShowToClock] = useState(false);
 
-  const handleTimeChange = (event, selected) => {
-    setShowDateTimePicker(false);
-    if (selected) {
-      const formattedTime = moment(selected).format("hh:mm A");
-      if (!fromTime) {
-        setFromTime(formattedTime);
-      } else {
-        setToTime(formattedTime);
-      }
-      setSelectedTime(selected);
+  const handleFromTimeChange = (
+    event: DateTimePickerEvent,
+    selectedTime: Date
+  ) => {
+    setShowFromClock(false);
+    if (selectedTime) {
+      setFromTime(moment(selectedTime).format("hh:mm A"));
     }
   };
 
-  const handleTimeButtonPress = () => {
-    setShowDateTimePicker(true);
+  const handleToTimeChange = (
+    event: DateTimePickerEvent,
+    selectedTime: Date
+  ) => {
+    setShowToClock(false);
+    if (selectedTime) {
+      setToTime(moment(selectedTime).format("hh:mm A"));
+    }
   };
 
-  const handleSaveClick = () =>{
-    const start = parseInt(moment(fromTime, "hh:mm A").format("HH.mm"))
-    const end = parseInt(moment(toTime, "hh:mm A").format("HH.mm"))
-    addBusySlot(start, end)
+  const handleSaveClick = () => {
+    const start = parseFloat(moment(fromTime, "hh:mm A").format("HH.mm"));
+    const end = parseFloat(moment(toTime, "hh:mm A").format("HH.mm"));
+    addBusySlot(start, end);
+    console.log(`Start time is ${start}, End time is ${end}`);
     setFromTime(null);
     setToTime(null);
-    handleCloseModal(); 
-  }
+    handleCloseModal();
+  };
+
+  const handleCloseButton = () => {
+    setFromTime(null);
+    setToTime(null);
+    handleCloseModal();
+  };
+
+  useEffect(() => {
+    const setFromFunc = () => {
+      if (pickedTime) {
+        const formattedFrom = moment(
+          pickedTime.split(" ")[1],
+          "HH:mm:ss"
+        ).format("hh:mm A");
+
+        setFromTime(formattedFrom);
+      }
+    };
+
+    setFromFunc();
+  }, [pickedTime]);
 
   return (
     <>
@@ -50,18 +82,40 @@ const UnavailabilitySetPopup = ({ showModal, handleCloseModal, addBusySlot }: Pr
           <View style={styles.modalContainer}>
             <View style={styles.popupContainer}>
               <Text style={{ fontSize: 20 }}>Pick a time slot</Text>
+
+              {/* From time  */}
               <TouchableOpacity
-                onPress={handleTimeButtonPress}
+                onPress={() => setShowFromClock(p => !p)}
                 style={styles.timeButton}
               >
                 <Text style={{ textAlign: "center" }}>
-                  {fromTime ? `From: ${fromTime}` : "Select From Time"}
+                  {fromTime
+                    ? `From: ${fromTime}`
+                    : pickedTime
+                    ? moment(pickedTime.split(" ")[1], "HH:mm:ss").format(
+                        "hh:mm A"
+                      )
+                    : "Select From Time"}
                 </Text>
               </TouchableOpacity>
+              
 
-              {fromTime && (
+              {/* From Clock */}
+              {showFromClock && (
+                <DateTimePicker
+                  value={pickedTime ? new Date(pickedTime) : new Date()}
+                  mode="time"
+                  display="compact"
+                  onChange={handleFromTimeChange}
+                  onTouchCancel={() => console.log("cancelled")}
+                />
+              )}
+
+
+                {/* To Time */}
+              {(fromTime || pickedTime) && (
                 <TouchableOpacity
-                  onPress={handleTimeButtonPress}
+                  onPress={() => setShowToClock(p => !p)}
                   style={styles.timeButton}
                 >
                   <Text style={{ textAlign: "center" }}>
@@ -69,6 +123,20 @@ const UnavailabilitySetPopup = ({ showModal, handleCloseModal, addBusySlot }: Pr
                   </Text>
                 </TouchableOpacity>
               )}
+
+
+              {/* To Clock */}
+              {showToClock && (
+                <DateTimePicker
+                  value={new Date()}
+                  mode="time"
+                  display="compact"
+                  onChange={handleToTimeChange}
+                />
+              )}
+
+
+              {/*Add Button*/}
               {toTime && (
                 <TouchableOpacity
                   style={styles.closeButton}
@@ -78,7 +146,7 @@ const UnavailabilitySetPopup = ({ showModal, handleCloseModal, addBusySlot }: Pr
                 </TouchableOpacity>
               )}
               <TouchableOpacity
-                onPress={handleCloseModal}
+                onPress={handleCloseButton}
                 style={styles.closeButton}
               >
                 <Text style={{ textAlign: "center" }}>Close</Text>
@@ -87,14 +155,7 @@ const UnavailabilitySetPopup = ({ showModal, handleCloseModal, addBusySlot }: Pr
           </View>
         </Portal>
       )}
-      {showDateTimePicker && (
-        <DateTimePicker
-          value={selectedTime || new Date()}
-          mode="time"
-          display="compact"
-          onChange={handleTimeChange}
-        />
-      )}
+      
     </>
   );
 };
